@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TikTok Shop — Kalkulator Harga Jual</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+    body{max-width:900px;margin:24px auto;padding:18px;border:1px solid #eee;border-radius:10px}
+    h1{font-size:20px;margin:0 0 10px}
+    label{display:block;margin-top:12px;font-weight:600}
+    .row{display:flex;gap:12px;align-items:center}
+    input[type="number"], input[type="text"]{width:160px;padding:8px;border-radius:6px;border:1px solid #ddd}
+    input[type="range"]{width:220px}
+    .small{font-size:13px;color:#555}
+    .result{margin-top:18px;padding:14px;border-radius:8px;background:#f7f9fc;border:1px solid #e6eef7}
+    .warn{color:#9a2a00;font-weight:700}
+    .btn{margin-top:14px;padding:10px 14px;border-radius:8px;border:0;background:#111;color:#fff;cursor:pointer}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:640px){.row{flex-direction:column;align-items:flex-start}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <h1>Kalkulator Harga Jual — TikTok Shop</h1>
+  <p class="small">Masukkan angka di bawah. <strong>Target profit (%)</strong> diartikan sebagai <em>profit bersih</em> yang Anda inginkan dari harga jual (persentase dari Harga Jual).</p>
+
+  <div class="grid">
+    <div>
+      <label>Modal / HPP (Rp)</label>
+      <input id="modal" type="number" value="131500" min="0" step="100" />
+
+      <label>Biaya pemrosesan per order (Rp)</label>
+      <input id="procFee" type="number" value="1250" min="0" step="50" />
+
+      <label>Komisi platform (%)</label>
+      <input id="platPct" type="number" value="8" min="0" step="0.1" />
+
+      <label>Komisi dinamis (%)</label>
+      <input id="dynPct" type="number" value="5" min="0" step="0.1" />
+
+      <label>Pajak UMKM (%)</label>
+      <input id="umkmPct" type="number" value="0.5" min="0" step="0.1" />
+    </div>
+
+    <div>
+      <label>Cashback bonus (%, biasanya 0)</label>
+      <input id="cashbackPct" type="number" value="0" min="0" step="0.1" />
+
+      <label>Xtra boost program (%)</label>
+      <input id="boostPct" type="number" value="4.5" min="0" step="0.1" />
+
+      <label>Komisi iklan toko aff (%)</label>
+      <input id="affPct" type="number" value="5" min="0" step="0.1" />
+
+      <label>Biaya ads (%)</label>
+      <input id="adsPct" type="number" value="10" min="0" step="0.1" />
+
+      <label>Target profit bersih (%)</label>
+      <input id="targetPct" type="number" value="10" min="0" step="0.1" />
+    </div>
+  </div>
+
+  <button class="btn" onclick="calculate()">Hitung Harga Jual yang Dibutuhkan</button>
+
+  <div id="result" class="result" style="display:none"></div>
+
+  <script>
+    function toRp(x){return 'Rp' + Number(x).toLocaleString('id-ID', {maximumFractionDigits:0})}
+
+    function calculate(){
+      const M = Number(document.getElementById('modal').value) || 0;
+      const Pproc = Number(document.getElementById('procFee').value) || 0;
+
+      // TikTok fees
+      const plat = Number(document.getElementById('platPct').value) || 0;
+      const dyn = Number(document.getElementById('dynPct').value) || 0;
+      const umkm = Number(document.getElementById('umkmPct').value) || 0;
+      const cashback = Number(document.getElementById('cashbackPct').value) || 0;
+
+      // Marketing fees
+      const boost = Number(document.getElementById('boostPct').value) || 0;
+      const aff = Number(document.getElementById('affPct').value) || 0;
+      const ads = Number(document.getElementById('adsPct').value) || 0;
+
+      const targetPct = Number(document.getElementById('targetPct').value) / 100; // as fraction of price
+
+      // Sum percentages (all are percent of selling price)
+      const tiktokPct = (plat + dyn + umkm + cashback)/100.0;
+      const marketingPct = (boost + aff + ads)/100.0;
+      const totalPct = tiktokPct + marketingPct; // fraction of S
+
+      const denom = 1 - totalPct - targetPct;
+
+      const out = document.getElementById('result');
+      out.style.display = 'block';
+
+      if(denom <= 0){
+        out.innerHTML = '<div class="warn">Error: kombinasi biaya + target profit terlalu besar sehingga tidak mungkin tercapai. Kurangi target profit atau biaya (marketing/komisi).</div>';
+        return;
+      }
+
+      // Solve S = (M + Pproc) / denom
+      const S = (M + Pproc) / denom;
+
+      // Derived numbers
+      const totalFeesRp = S * totalPct;
+      const tiktokRp = S * tiktokPct;
+      const marketingRp = S * marketingPct;
+      const netProfitRp = S - M - Pproc - totalFeesRp; // should equal targetPct * S
+      const achievedProfitPct = (netProfitRp / S) * 100;
+
+      // Present results
+      out.innerHTML = `
+        <strong>Hasil Perhitungan</strong>
+        <p class="small">Harga jual yang diperlukan: <strong>${toRp(S.toFixed(0))}</strong></p>
+        <div class="small">
+          <div>Modal (HPP): ${toRp(M)}</div>
+          <div>Biaya pemrosesan: ${toRp(Pproc)}</div>
+          <div>Total potongan TikTok: ${(tiktokPct*100).toFixed(2)}% &nbsp; (≈ ${toRp(tiktokRp.toFixed(0))})</div>
+          <div>Total biaya marketing: ${(marketingPct*100).toFixed(2)}% &nbsp; (≈ ${toRp(marketingRp.toFixed(0))})</div>
+          <div><strong>Total biaya (persentase dari harga): ${(totalPct*100).toFixed(2)}%</strong> &nbsp; (≈ ${toRp(totalFeesRp.toFixed(0))})</div>
+          <div>Target profit bersih: ${(targetPct*100).toFixed(2)}% dari Harga Jual</div>
+          <div>Profit bersih nominal: ${toRp(netProfitRp.toFixed(0))} (margin ≈ ${achievedProfitPct.toFixed(2)}%)</div>
+        </div>
+        <hr>
+        <div class="small">Catatan: rumus yang dipakai adalah
+        <pre style="white-space:pre-wrap">S*(1 - totalPct) - Modal - ProcFee = targetPct * S
+⇒ S = (Modal + ProcFee) / (1 - totalPct - targetPct)</pre>
+        Pastikan <em>denominator</em> (1 − totalPct − targetPct) &gt; 0.</div>
+      `;
+    }
+  </script>
+</body>
+</html>
